@@ -1,10 +1,13 @@
 // Client-side rendering and interaction for the Flask-backed Sudoku
 const SIZE = 9;
+const LEADERBOARD_STORAGE_KEY = 'sudoku-leaderboard';
+const DARK_MODE_STORAGE_KEY = 'sudoku-dark-mode';
 let puzzle = [];
 let timerInterval = null;
 let elapsedSeconds = 0;
 let scoreSaved = false;
 let liveCheckTimeout = null;
+let isDarkMode = false;
 
 function formatTime(totalSeconds) {
   const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -78,10 +81,11 @@ function renderPuzzle(puz) {
       if (val !== 0) {
         inp.value = val;
         inp.disabled = true;
-        inp.className += ' prefilled';
+        inp.className = 'sudoku-cell prefilled';
       } else {
         inp.value = '';
         inp.disabled = false;
+        inp.className = 'sudoku-cell';
       }
     }
   }
@@ -97,22 +101,46 @@ async function newGame() {
   startTimer();
 }
 
-async function loadLeaderboard() {
-  const res = await fetch('/leaderboard');
-  const data = await res.json();
+function getStoredLeaderboard() {
+  const stored = localStorage.getItem(LEADERBOARD_STORAGE_KEY);
+  if (!stored) {
+    return [];
+  }
+  try {
+    return JSON.parse(stored);
+  } catch (error) {
+    return [];
+  }
+}
+
+function renderLeaderboard(scores) {
   const list = document.getElementById('leaderboard-list');
   list.innerHTML = '';
-  if (!data.scores.length) {
+  if (!scores.length) {
     const item = document.createElement('li');
     item.textContent = 'No scores yet.';
     list.appendChild(item);
     return;
   }
-  data.scores.forEach((entry, index) => {
+  scores.forEach((entry, index) => {
     const item = document.createElement('li');
     item.textContent = `${index + 1}. ${entry.name} — ${entry.time}s (${entry.difficulty})`;
     list.appendChild(item);
   });
+}
+
+async function loadLeaderboard() {
+  const scores = getStoredLeaderboard();
+  renderLeaderboard(scores);
+}
+
+function saveLeaderboardEntry(entry) {
+  const scores = getStoredLeaderboard();
+  scores.push(entry);
+  scores.sort((a, b) => a.time - b.time || a.name.localeCompare(b.name));
+  const topScores = scores.slice(0, 10);
+  localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(topScores));
+  renderLeaderboard(topScores);
 }
 
 async function saveScore() {
@@ -121,15 +149,17 @@ async function saveScore() {
   }
   const name = document.getElementById('player-name').value.trim() || 'Anonymous';
   const difficulty = document.getElementById('difficulty-select').value;
-  const res = await fetch('/score', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({name, time: elapsedSeconds, difficulty})
-  });
-  const data = await res.json();
-  if (data.status === 'ok') {
-    scoreSaved = true;
-    await loadLeaderboard();
+  const entry = {name, time: elapsedSeconds, difficulty};
+  saveLeaderboardEntry(entry);
+  scoreSaved = true;
+  try {
+    await fetch('/score', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(entry)
+    });
+  } catch (error) {
+    // Keep local storage persistence even if the server is unavailable.
   }
 }
 
@@ -220,12 +250,38 @@ async function checkSolution() {
   }
 }
 
+function applyDarkMode() {
+  document.body.classList.toggle('dark', isDarkMode);
+  const toggle = document.getElementById('dark-mode-toggle');
+  if (toggle) {
+    toggle.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
+  }
+}
+
+function toggleDarkMode() {
+  isDarkMode = !isDarkMode;
+  localStorage.setItem(DARK_MODE_STORAGE_KEY, String(isDarkMode));
+  applyDarkMode();
+}
+
+function loadDarkModePreference() {
+  const storedValue = localStorage.getItem(DARK_MODE_STORAGE_KEY);
+  if (storedValue === 'true') {
+    isDarkMode = true;
+  } else {
+    isDarkMode = false;
+  }
+  applyDarkMode();
+}
+
 // Wire buttons
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
   document.getElementById('save-score').addEventListener('click', saveScore);
   document.getElementById('hint-button').addEventListener('click', getHint);
+  document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
+  loadDarkModePreference();
   loadLeaderboard();
   // initialize
   newGame();

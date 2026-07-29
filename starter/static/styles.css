@@ -1,9 +1,16 @@
 body {
     font-family: Arial, sans-serif;
     background: #f4f4f4;
+    color: #333;
     text-align: center;
     margin: 0;
     padding: 0;
+    transition: background 0.2s, color 0.2s;
+}
+
+body.dark {
+    background: #1f1f1f;
+    color: #f5f5f5;
 }
 
 h1 {
@@ -17,6 +24,11 @@ h1 {
     border: 4px solid #333;
     background: #fff;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+body.dark #sudoku-board {
+    background: #2b2b2b;
+    border-color: #f5f5f5;
 }
 
 .sudoku-row {
@@ -137,6 +149,27 @@ button:hover {
 
 #leaderboard-list {
     padding-left: 20px;
+}
+
+body.dark .sudoku-cell {
+    background: #444;
+    color: #f5f5f5;
+    border-color: #777;
+}
+
+body.dark .sudoku-cell.prefilled {
+    background: #666;
+    color: #fff;
+}
+
+body.dark .sudoku-cell.incorrect {
+    background: #7f1d1d;
+}
+
+body.dark .difficulty-label,
+body.dark #timer,
+body.dark .leaderboard h2 {
+    color: #f5f5f5;
 }
 
 #message {
