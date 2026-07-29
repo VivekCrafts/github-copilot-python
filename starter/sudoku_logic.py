@@ -3,12 +3,20 @@ import random
 
 SIZE = 9
 EMPTY = 0
+DIFFICULTY_SETTINGS = {
+    "easy": 40,
+    "medium": 32,
+    "hard": 24,
+}
+
 
 def deep_copy(board):
     return copy.deepcopy(board)
 
+
 def create_empty_board():
     return [[EMPTY for _ in range(SIZE)] for _ in range(SIZE)]
+
 
 def is_safe(board, row, col, num):
     # Check row and column
@@ -23,6 +31,7 @@ def is_safe(board, row, col, num):
             if board[start_row + i][start_col + j] == num:
                 return False
     return True
+
 
 def fill_board(board):
     for row in range(SIZE):
@@ -39,6 +48,7 @@ def fill_board(board):
                 return False
     return True
 
+
 def remove_cells(board, clues):
     attempts = SIZE * SIZE - clues
     while attempts > 0:
@@ -48,7 +58,15 @@ def remove_cells(board, clues):
             board[row][col] = EMPTY
             attempts -= 1
 
-def generate_puzzle(clues=35):
+
+def get_clues_for_difficulty(difficulty="medium"):
+    difficulty_key = (difficulty or "medium").lower()
+    return DIFFICULTY_SETTINGS.get(difficulty_key, DIFFICULTY_SETTINGS["medium"])
+
+
+def generate_puzzle(clues=None, difficulty="medium"):
+    if clues is None:
+        clues = get_clues_for_difficulty(difficulty)
     board = create_empty_board()
     fill_board(board)
     solution = deep_copy(board)
