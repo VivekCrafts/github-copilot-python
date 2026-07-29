@@ -4,6 +4,7 @@ let puzzle = [];
 let timerInterval = null;
 let elapsedSeconds = 0;
 let scoreSaved = false;
+let liveCheckTimeout = null;
 
 function formatTime(totalSeconds) {
   const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -51,6 +52,12 @@ function createBoardElement() {
       input.addEventListener('input', (e) => {
         const val = e.target.value.replace(/[^1-9]/g, '');
         e.target.value = val;
+        if (liveCheckTimeout) {
+          window.clearTimeout(liveCheckTimeout);
+        }
+        liveCheckTimeout = window.setTimeout(() => {
+          checkBoardLive();
+        }, 150);
       });
       rowDiv.appendChild(input);
     }
@@ -126,7 +133,7 @@ async function saveScore() {
   }
 }
 
-async function checkSolution() {
+function getBoardFromInputs() {
   const boardDiv = document.getElementById('sudoku-board');
   const inputs = boardDiv.getElementsByTagName('input');
   const board = [];
@@ -138,6 +145,37 @@ async function checkSolution() {
       board[i][j] = val ? parseInt(val, 10) : 0;
     }
   }
+  return {board, inputs};
+}
+
+function updateCellHighlights(incorrect, inputs) {
+  const incorrectSet = new Set(incorrect.map(x => x[0] * SIZE + x[1]));
+  for (let idx = 0; idx < inputs.length; idx++) {
+    const inp = inputs[idx];
+    if (inp.disabled) continue;
+    inp.className = 'sudoku-cell';
+    if (incorrectSet.has(idx)) {
+      inp.className = 'sudoku-cell incorrect';
+    }
+  }
+}
+
+async function checkBoardLive() {
+  const {board, inputs} = getBoardFromInputs();
+  const res = await fetch('/check', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({board})
+  });
+  const data = await res.json();
+  if (data.error) {
+    return;
+  }
+  updateCellHighlights(data.incorrect, inputs);
+}
+
+async function checkSolution() {
+  const {board, inputs} = getBoardFromInputs();
   const res = await fetch('/check', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -150,16 +188,8 @@ async function checkSolution() {
     msg.innerText = data.error;
     return;
   }
-  const incorrect = new Set(data.incorrect.map(x => x[0]*SIZE + x[1]));
-  for (let idx = 0; idx < inputs.length; idx++) {
-    const inp = inputs[idx];
-    if (inp.disabled) continue;
-    inp.className = 'sudoku-cell';
-    if (incorrect.has(idx)) {
-      inp.className = 'sudoku-cell incorrect';
-    }
-  }
-  if (incorrect.size === 0) {
+  updateCellHighlights(data.incorrect, inputs);
+  if (data.incorrect.length === 0) {
     stopTimer();
     msg.style.color = '#388e3c';
     msg.innerText = `Congratulations! You solved it in ${formatTime(elapsedSeconds)}.`;

@@ -9,6 +9,8 @@ CURRENT = {
     'solution': None
 }
 
+app.CURRENT = CURRENT
+
 # Simple in-memory leaderboard storage
 app.LEADERBOARD = []
 
