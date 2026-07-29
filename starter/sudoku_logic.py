@@ -3,6 +3,7 @@ import random
 
 SIZE = 9
 EMPTY = 0
+# Number of clues to leave visible for each difficulty level.
 DIFFICULTY_SETTINGS = {
     "easy": 40,
     "medium": 32,
@@ -19,7 +20,7 @@ def create_empty_board():
 
 
 def is_safe(board, row, col, num):
-    # Check row and column
+    # Ensure the chosen value does not clash with the current row, column, or 3x3 box.
     for x in range(SIZE):
         if board[row][x] == num or board[x][col] == num:
             return False
@@ -34,6 +35,7 @@ def is_safe(board, row, col, num):
 
 
 def fill_board(board):
+    # Recursively fill the board with a valid complete solution.
     for row in range(SIZE):
         for col in range(SIZE):
             if board[row][col] == EMPTY:
@@ -65,6 +67,7 @@ def get_clues_for_difficulty(difficulty="medium"):
 
 
 def generate_puzzle(clues=None, difficulty="medium"):
+    # Build a full solution, remove clues to create the puzzle, and return both versions.
     if clues is None:
         clues = get_clues_for_difficulty(difficulty)
     board = create_empty_board()

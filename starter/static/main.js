@@ -1,5 +1,6 @@
 // Client-side rendering and interaction for the Flask-backed Sudoku
 const SIZE = 9;
+// Local storage keys for persistence across page refreshes.
 const LEADERBOARD_STORAGE_KEY = 'sudoku-leaderboard';
 const DARK_MODE_STORAGE_KEY = 'sudoku-dark-mode';
 let puzzle = [];
@@ -8,6 +9,7 @@ let elapsedSeconds = 0;
 let scoreSaved = false;
 let liveCheckTimeout = null;
 let isDarkMode = false;
+let hintsUsed = 0;
 
 function formatTime(totalSeconds) {
   const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -40,6 +42,7 @@ function stopTimer() {
 }
 
 function createBoardElement() {
+  // Build the interactive board UI from scratch for each new puzzle.
   const boardDiv = document.getElementById('sudoku-board');
   boardDiv.innerHTML = '';
   for (let i = 0; i < SIZE; i++) {
@@ -92,12 +95,14 @@ function renderPuzzle(puz) {
 }
 
 async function newGame() {
+  // Request a new puzzle and reset the timer and hint tracking for the round.
   const difficulty = document.getElementById('difficulty-select').value;
   const res = await fetch(`/new?difficulty=${encodeURIComponent(difficulty)}`);
   const data = await res.json();
   renderPuzzle(data.puzzle);
   document.getElementById('message').innerText = '';
   scoreSaved = false;
+  hintsUsed = 0;
   startTimer();
 }
 
@@ -135,6 +140,7 @@ async function loadLeaderboard() {
 }
 
 function saveLeaderboardEntry(entry) {
+  // Keep the best 10 entries locally so the leaderboard survives page refreshes.
   const scores = getStoredLeaderboard();
   scores.push(entry);
   scores.sort((a, b) => a.time - b.time || a.name.localeCompare(b.name));
@@ -144,12 +150,13 @@ function saveLeaderboardEntry(entry) {
 }
 
 async function saveScore() {
+  // Persist a completed game automatically once the board is solved.
   if (scoreSaved) {
     return;
   }
   const name = document.getElementById('player-name').value.trim() || 'Anonymous';
   const difficulty = document.getElementById('difficulty-select').value;
-  const entry = {name, time: elapsedSeconds, difficulty};
+  const entry = {name, time: elapsedSeconds, difficulty, hints_used: hintsUsed};
   saveLeaderboardEntry(entry);
   scoreSaved = true;
   try {
@@ -164,6 +171,7 @@ async function saveScore() {
 }
 
 async function getHint() {
+  // Request one solved cell from the server and reveal it in the board.
   const res = await fetch('/hint');
   const data = await res.json();
   if (data.error) {
@@ -180,6 +188,7 @@ async function getHint() {
     inp.disabled = true;
     inp.className = 'sudoku-cell prefilled';
   }
+  hintsUsed += 1;
   document.getElementById('message').innerText = 'Hint used.';
 }
 
@@ -251,6 +260,7 @@ async function checkSolution() {
 }
 
 function applyDarkMode() {
+  // Toggle the full-page theme class so the UI updates instantly.
   document.body.classList.toggle('dark', isDarkMode);
   const toggle = document.getElementById('dark-mode-toggle');
   if (toggle) {
@@ -278,7 +288,6 @@ function loadDarkModePreference() {
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
-  document.getElementById('save-score').addEventListener('click', saveScore);
   document.getElementById('hint-button').addEventListener('click', getHint);
   document.getElementById('dark-mode-toggle').addEventListener('click', toggleDarkMode);
   loadDarkModePreference();

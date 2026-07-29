@@ -8,6 +8,7 @@
 <body>
   <h1>Sudoku Game</h1>
   <div id="sudoku-board"></div>
+  <!-- Main game controls for difficulty, solving, hints, and theme toggling. -->
   <div class="controls">
     <label for="difficulty-select" class="difficulty-label">Difficulty:</label>
     <select id="difficulty-select">
@@ -24,8 +25,8 @@
   </div>
   <div class="score-panel">
     <input id="player-name" type="text" maxlength="20" placeholder="Your name">
-    <button id="save-score">Save Score</button>
   </div>
+  <!-- Persistent leaderboard for completed games. -->
   <div class="leaderboard">
     <h2>Leaderboard</h2>
     <ol id="leaderboard-list"></ol>

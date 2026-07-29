@@ -3,7 +3,7 @@ import sudoku_logic
 
 app = Flask(__name__)
 
-# Keep a simple in-memory store for current puzzle and solution
+# Stores the active puzzle and its solved board for the current session.
 CURRENT = {
     'puzzle': None,
     'solution': None
@@ -11,7 +11,7 @@ CURRENT = {
 
 app.CURRENT = CURRENT
 
-# Simple in-memory leaderboard storage
+# Simple in-memory leaderboard storage for completed games.
 app.LEADERBOARD = []
 
 @app.route('/')
@@ -20,6 +20,7 @@ def index():
 
 @app.route('/new')
 def new_game():
+    # Generate a fresh puzzle for the selected difficulty and keep it in memory.
     difficulty = request.args.get('difficulty', 'medium')
     puzzle, solution = sudoku_logic.generate_puzzle(difficulty=difficulty)
     CURRENT['puzzle'] = puzzle
@@ -28,6 +29,7 @@ def new_game():
 
 @app.route('/check', methods=['POST'])
 def check_solution():
+    # Compare the player's board against the solved board and report incorrect cells.
     data = request.json
     board = data.get('board')
     solution = CURRENT.get('solution')
@@ -43,19 +45,24 @@ def check_solution():
 
 @app.route('/score', methods=['POST'])
 def submit_score():
+    # Record a completed game result with the player's name, time, difficulty, and hints used.
     data = request.json or {}
     name = (data.get('name') or '').strip() or 'Anonymous'
     time_taken = int(data.get('time', 0))
     difficulty = (data.get('difficulty') or 'medium').lower()
 
+    hints_used = int(data.get('hints_used', 0))
+
     entry = {
         'name': name,
         'time': time_taken,
         'difficulty': difficulty,
+        'hints_used': hints_used,
     }
     app.LEADERBOARD.append(entry)
-    app.LEADERBOARD.sort(key=lambda item: (item['time'], item['name'].lower()))
-    return jsonify({'status': 'ok', 'scores': app.LEADERBOARD[:10]})
+    app.LEADERBOARD.sort(key=lambda item: (item['time'], item['hints_used'], item['name'].lower()))
+    app.LEADERBOARD = app.LEADERBOARD[:10]
+    return jsonify({'status': 'ok', 'scores': app.LEADERBOARD})
 
 
 @app.route('/leaderboard')
@@ -65,6 +72,7 @@ def get_leaderboard():
 
 @app.route('/hint')
 def get_hint():
+    # Reveal one correct cell from the current puzzle so the player can progress.
     solution = CURRENT.get('solution')
     puzzle = CURRENT.get('puzzle')
     if not solution or not puzzle:
