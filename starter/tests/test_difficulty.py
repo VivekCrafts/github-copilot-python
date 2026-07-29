@@ -1,6 +1,6 @@
 import unittest
 
-from sudoku_logic import generate_puzzle
+from sudoku_logic import count_solutions, generate_puzzle
 
 
 class DifficultyTests(unittest.TestCase):
@@ -23,6 +23,10 @@ class DifficultyTests(unittest.TestCase):
         self.assertEqual(len(easy_solution), 9)
         self.assertEqual(len(medium_solution), 9)
         self.assertEqual(len(hard_solution), 9)
+
+    def test_generate_puzzle_has_unique_solution(self):
+        puzzle, _ = generate_puzzle(difficulty="medium")
+        self.assertEqual(count_solutions(puzzle, limit=2), 1)
 
 
 if __name__ == "__main__":

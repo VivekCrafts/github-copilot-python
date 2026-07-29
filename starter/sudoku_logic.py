@@ -51,14 +51,53 @@ def fill_board(board):
     return True
 
 
-def remove_cells(board, clues):
-    attempts = SIZE * SIZE - clues
-    while attempts > 0:
-        row = random.randrange(SIZE)
-        col = random.randrange(SIZE)
-        if board[row][col] != EMPTY:
+def find_empty_cell(board):
+    for row in range(SIZE):
+        for col in range(SIZE):
+            if board[row][col] == EMPTY:
+                return row, col
+    return None, None
+
+
+def solve_board(board, limit=2):
+    row, col = find_empty_cell(board)
+    if row is None:
+        return 1
+
+    count = 0
+    for candidate in range(1, SIZE + 1):
+        if is_safe(board, row, col, candidate):
+            board[row][col] = candidate
+            count += solve_board(board, limit)
             board[row][col] = EMPTY
-            attempts -= 1
+            if count >= limit:
+                return count
+    return count
+
+
+def count_solutions(board, limit=2):
+    return solve_board(deep_copy(board), limit)
+
+
+def remove_cells(board, clues):
+    target_removals = SIZE * SIZE - clues
+    filled_positions = [
+        (row, col)
+        for row in range(SIZE)
+        for col in range(SIZE)
+        if board[row][col] != EMPTY
+    ]
+    random.shuffle(filled_positions)
+
+    removed = 0
+    while filled_positions and removed < target_removals:
+        row, col = filled_positions.pop()
+        previous_value = board[row][col]
+        board[row][col] = EMPTY
+        if count_solutions(board, limit=2) != 1:
+            board[row][col] = previous_value
+        else:
+            removed += 1
 
 
 def get_clues_for_difficulty(difficulty="medium"):
