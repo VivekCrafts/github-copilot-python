@@ -133,6 +133,26 @@ async function saveScore() {
   }
 }
 
+async function getHint() {
+  const res = await fetch('/hint');
+  const data = await res.json();
+  if (data.error) {
+    document.getElementById('message').innerText = data.error;
+    return;
+  }
+
+  const boardDiv = document.getElementById('sudoku-board');
+  const inputs = boardDiv.getElementsByTagName('input');
+  const idx = data.row * SIZE + data.col;
+  const inp = inputs[idx];
+  if (inp) {
+    inp.value = data.value;
+    inp.disabled = true;
+    inp.className = 'sudoku-cell prefilled';
+  }
+  document.getElementById('message').innerText = 'Hint used.';
+}
+
 function getBoardFromInputs() {
   const boardDiv = document.getElementById('sudoku-board');
   const inputs = boardDiv.getElementsByTagName('input');
@@ -205,6 +225,7 @@ window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
   document.getElementById('save-score').addEventListener('click', saveScore);
+  document.getElementById('hint-button').addEventListener('click', getHint);
   loadLeaderboard();
   // initialize
   newGame();

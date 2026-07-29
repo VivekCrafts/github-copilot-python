@@ -94,6 +94,14 @@ button:hover {
     background: #1565c0;
 }
 
+#hint-button {
+    background: #388e3c;
+}
+
+#hint-button:hover {
+    background: #2e7d32;
+}
+
 #timer {
     margin-left: 10px;
     font-size: 16px;

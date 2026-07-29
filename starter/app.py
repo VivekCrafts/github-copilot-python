@@ -63,5 +63,21 @@ def get_leaderboard():
     return jsonify({'scores': app.LEADERBOARD[:10]})
 
 
+@app.route('/hint')
+def get_hint():
+    solution = CURRENT.get('solution')
+    puzzle = CURRENT.get('puzzle')
+    if not solution or not puzzle:
+        return jsonify({'error': 'No game in progress'}), 400
+
+    for row in range(sudoku_logic.SIZE):
+        for col in range(sudoku_logic.SIZE):
+            if puzzle[row][col] == 0:
+                puzzle[row][col] = solution[row][col]
+                return jsonify({'row': row, 'col': col, 'value': solution[row][col]})
+
+    return jsonify({'error': 'No empty cells left'}), 400
+
+
 if __name__ == '__main__':
     app.run(debug=True)
