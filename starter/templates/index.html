@@ -2,35 +2,68 @@
 <html>
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Sudoku Game</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <h1>Sudoku Game</h1>
-  <div id="sudoku-board"></div>
-  <!-- Main game controls for difficulty, solving, hints, and theme toggling. -->
-  <div class="controls">
-    <label for="difficulty-select" class="difficulty-label">Difficulty:</label>
-    <select id="difficulty-select">
-      <option value="easy">Easy</option>
-      <option value="medium" selected>Medium</option>
-      <option value="hard">Hard</option>
-    </select>
-    <button id="new-game">New Game</button>
-    <button id="check-solution">Check Solution</button>
-    <button id="hint-button">Hint</button>
-    <button id="dark-mode-toggle">Dark Mode</button>
-    <span id="timer">Time: 00:00</span>
-    <span id="message"></span>
-  </div>
-  <div class="score-panel">
-    <input id="player-name" type="text" maxlength="20" placeholder="Your name">
-  </div>
-  <!-- Persistent leaderboard for completed games. -->
-  <div class="leaderboard">
-    <h2>Leaderboard</h2>
-    <ol id="leaderboard-list"></ol>
-  </div>
+  <header>
+    <h1>Sudoku</h1>
+  </header>
+
+  <main class="game-area">
+    <div class="controls-left">
+      <div class="control-group">
+        <label for="difficulty-select" class="difficulty-label">Difficulty:</label>
+        <select id="difficulty-select">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </div>
+      <button id="new-game" class="primary-button">New Game</button>
+      <div class="player-name-wrapper">
+        <input id="player-name" type="text" maxlength="20" placeholder="Your name">
+      </div>
+    </div>
+
+    <div class="board-column">
+      <div class="board-header">
+        <span class="board-title">Sudoku</span>
+        <button id="dark-mode-toggle" class="toggle-button">Dark Mode</button>
+      </div>
+      <div id="sudoku-board" aria-label="Sudoku board" role="grid"></div>
+      <div class="board-info">
+        <span id="timer">Time: 00:00</span>
+        <span id="message" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="controls-right">
+      <button id="check-solution" class="primary-button">Check</button>
+      <button id="hint-button" class="hint-button">Hint</button>
+    </div>
+  </main>
+
+  <section class="leaderboard">
+    <h2>Top 10 Fastest Times:</h2>
+    <div class="leaderboard-wrapper">
+      <table id="leaderboard-table" aria-label="Leaderboard">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Name</th>
+            <th>Time</th>
+            <th>Level</th>
+            <th>Hints</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
   <script src="/static/main.js"></script>
 </body>
 </html>

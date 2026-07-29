@@ -3,16 +3,12 @@ import sudoku_logic
 
 app = Flask(__name__)
 
-# Stores the active puzzle and its solved board for the current session.
-CURRENT = {
-    'puzzle': None,
-    'solution': None
-}
+CURRENT_GAME = {'puzzle': None, 'solution': None}
+LEADERBOARD = []
 
-app.CURRENT = CURRENT
-
-# Simple in-memory leaderboard storage for completed games.
-app.LEADERBOARD = []
+# Expose objects for tests that rely on app.CURRENT and app.LEADERBOARD.
+app.CURRENT = CURRENT_GAME
+app.LEADERBOARD = LEADERBOARD
 
 @app.route('/')
 def index():
@@ -20,38 +16,36 @@ def index():
 
 @app.route('/new')
 def new_game():
-    # Generate a fresh puzzle for the selected difficulty and keep it in memory.
-    difficulty = request.args.get('difficulty', 'medium')
+    difficulty = request.args.get('difficulty', 'medium').lower()
     puzzle, solution = sudoku_logic.generate_puzzle(difficulty=difficulty)
-    CURRENT['puzzle'] = puzzle
-    CURRENT['solution'] = solution
+    CURRENT_GAME['puzzle'] = puzzle
+    CURRENT_GAME['solution'] = solution
     return jsonify({'puzzle': puzzle, 'difficulty': difficulty})
 
 @app.route('/check', methods=['POST'])
 def check_solution():
-    # Compare the player's board against the solved board and report incorrect cells.
-    data = request.json
+    data = request.get_json(silent=True) or {}
     board = data.get('board')
-    solution = CURRENT.get('solution')
-    if solution is None:
+    solution = CURRENT_GAME.get('solution')
+
+    if solution is None or board is None:
         return jsonify({'error': 'No game in progress'}), 400
+
     incorrect = []
-    for i in range(sudoku_logic.SIZE):
-        for j in range(sudoku_logic.SIZE):
-            if board[i][j] != solution[i][j]:
-                incorrect.append([i, j])
+    for row in range(sudoku_logic.SIZE):
+        for col in range(sudoku_logic.SIZE):
+            if board[row][col] != solution[row][col]:
+                incorrect.append([row, col])
     return jsonify({'incorrect': incorrect})
 
 
 @app.route('/score', methods=['POST'])
 def submit_score():
-    # Record a completed game result with the player's name, time, difficulty, and hints used.
-    data = request.json or {}
+    data = request.get_json(silent=True) or {}
     name = (data.get('name') or '').strip() or 'Anonymous'
-    time_taken = int(data.get('time', 0))
+    time_taken = int(data.get('time', 0) or 0)
     difficulty = (data.get('difficulty') or 'medium').lower()
-
-    hints_used = int(data.get('hints_used', 0))
+    hints_used = int(data.get('hints_used', 0) or 0)
 
     entry = {
         'name': name,
@@ -59,23 +53,22 @@ def submit_score():
         'difficulty': difficulty,
         'hints_used': hints_used,
     }
-    app.LEADERBOARD.append(entry)
-    app.LEADERBOARD.sort(key=lambda item: (item['time'], item['hints_used'], item['name'].lower()))
-    app.LEADERBOARD = app.LEADERBOARD[:10]
-    return jsonify({'status': 'ok', 'scores': app.LEADERBOARD})
+    LEADERBOARD.append(entry)
+    LEADERBOARD.sort(key=lambda item: (item['time'], item['hints_used'], item['name'].lower()))
+    return jsonify({'status': 'ok', 'scores': LEADERBOARD[:10]})
 
 
 @app.route('/leaderboard')
 def get_leaderboard():
-    return jsonify({'scores': app.LEADERBOARD[:10]})
+    return jsonify({'scores': LEADERBOARD[:10]})
 
 
 @app.route('/hint')
 def get_hint():
-    # Reveal one correct cell from the current puzzle so the player can progress.
-    solution = CURRENT.get('solution')
-    puzzle = CURRENT.get('puzzle')
-    if not solution or not puzzle:
+    puzzle = CURRENT_GAME.get('puzzle')
+    solution = CURRENT_GAME.get('solution')
+
+    if puzzle is None or solution is None:
         return jsonify({'error': 'No game in progress'}), 400
 
     for row in range(sudoku_logic.SIZE):

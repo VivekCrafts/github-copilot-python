@@ -52,9 +52,13 @@ function createBoardElement() {
       const input = document.createElement('input');
       input.type = 'text';
       input.maxLength = 1;
-      input.className = 'sudoku-cell';
       input.dataset.row = i;
       input.dataset.col = j;
+
+      // alternating 3x3 block class (A/B checkerboard: block-row % 2 === block-col % 2 -> A)
+      const blockClass = (Math.floor(i / 3) % 2) === (Math.floor(j / 3) % 2) ? 'block-a' : 'block-b';
+      input.className = `sudoku-cell ${blockClass}`;
+
       input.addEventListener('input', (e) => {
         const val = e.target.value.replace(/[^1-9]/g, '');
         e.target.value = val;
@@ -81,14 +85,15 @@ function renderPuzzle(puz) {
       const idx = i * SIZE + j;
       const val = puzzle[i][j];
       const inp = inputs[idx];
+      // Keep any block-* classes assigned at creation; toggle prefilled state.
       if (val !== 0) {
         inp.value = val;
         inp.disabled = true;
-        inp.className = 'sudoku-cell prefilled';
+        inp.classList.add('prefilled');
       } else {
         inp.value = '';
         inp.disabled = false;
-        inp.className = 'sudoku-cell';
+        inp.classList.remove('prefilled');
       }
     }
   }
@@ -119,18 +124,36 @@ function getStoredLeaderboard() {
 }
 
 function renderLeaderboard(scores) {
-  const list = document.getElementById('leaderboard-list');
-  list.innerHTML = '';
+  const tbody = document.querySelector('#leaderboard-table tbody');
+  tbody.innerHTML = '';
   if (!scores.length) {
-    const item = document.createElement('li');
-    item.textContent = 'No scores yet.';
-    list.appendChild(item);
+    const row = document.createElement('tr');
+    const cell = document.createElement('td');
+    cell.colSpan = 5;
+    cell.textContent = 'No scores yet.';
+    cell.style.padding = '20px';
+    cell.style.color = '#5b6b8a';
+    row.appendChild(cell);
+    tbody.appendChild(row);
     return;
   }
   scores.forEach((entry, index) => {
-    const item = document.createElement('li');
-    item.textContent = `${index + 1}. ${entry.name} — ${entry.time}s (${entry.difficulty})`;
-    list.appendChild(item);
+    const row = document.createElement('tr');
+    const hints = entry.hints_used || 0;
+    const time = formatTime(entry.time || 0);
+    const cells = [
+      index + 1,
+      entry.name || 'Anonymous',
+      time,
+      entry.difficulty || 'medium',
+      hints,
+    ];
+    cells.forEach((value) => {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.appendChild(cell);
+    });
+    tbody.appendChild(row);
   });
 }
 
@@ -143,7 +166,14 @@ function saveLeaderboardEntry(entry) {
   // Keep the best 10 entries locally so the leaderboard survives page refreshes.
   const scores = getStoredLeaderboard();
   scores.push(entry);
-  scores.sort((a, b) => a.time - b.time || a.name.localeCompare(b.name));
+  // Sort by time, then hints used, then name to match server-side ordering.
+  scores.sort((a, b) => {
+    const t = a.time - b.time;
+    if (t !== 0) return t;
+    const h = (a.hints_used || 0) - (b.hints_used || 0);
+    if (h !== 0) return h;
+    return (a.name || '').localeCompare(b.name || '');
+  });
   const topScores = scores.slice(0, 10);
   localStorage.setItem(LEADERBOARD_STORAGE_KEY, JSON.stringify(topScores));
   renderLeaderboard(topScores);
@@ -186,7 +216,8 @@ async function getHint() {
   if (inp) {
     inp.value = data.value;
     inp.disabled = true;
-    inp.className = 'sudoku-cell prefilled';
+    // Preserve block classes and mark prefilled instead of overwriting className
+    inp.classList.add('prefilled');
   }
   hintsUsed += 1;
   document.getElementById('message').innerText = 'Hint used.';
@@ -207,30 +238,71 @@ function getBoardFromInputs() {
   return {board, inputs};
 }
 
-function updateCellHighlights(incorrect, inputs) {
+function updateCellHighlights(incorrect, inputs, includeDisabled = false) {
   const incorrectSet = new Set(incorrect.map(x => x[0] * SIZE + x[1]));
   for (let idx = 0; idx < inputs.length; idx++) {
     const inp = inputs[idx];
-    if (inp.disabled) continue;
-    inp.className = 'sudoku-cell';
+    // Skip disabled cells during live-only validation unless includeDisabled is true
+    if (!includeDisabled && inp.disabled) continue;
+
+    // remove only the incorrect marker, preserve block-* and prefilled classes
+    inp.classList.remove('incorrect');
+
     if (incorrectSet.has(idx)) {
-      inp.className = 'sudoku-cell incorrect';
+      inp.classList.add('incorrect');
     }
   }
 }
 
-async function checkBoardLive() {
-  const {board, inputs} = getBoardFromInputs();
-  const res = await fetch('/check', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({board})
-  });
-  const data = await res.json();
-  if (data.error) {
-    return;
+function findConflicts(board) {
+  const conflicts = new Set();
+
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const v = board[r][c];
+      if (!v) continue;
+
+      // Check row
+      for (let cc = 0; cc < SIZE; cc++) {
+        if (cc === c) continue;
+        if (board[r][cc] === v) {
+          conflicts.add(r * SIZE + c);
+          conflicts.add(r * SIZE + cc);
+        }
+      }
+
+      // Check column
+      for (let rr = 0; rr < SIZE; rr++) {
+        if (rr === r) continue;
+        if (board[rr][c] === v) {
+          conflicts.add(r * SIZE + c);
+          conflicts.add(rr * SIZE + c);
+        }
+      }
+
+      // Check 3x3 box
+      const br = Math.floor(r / 3) * 3;
+      const bc = Math.floor(c / 3) * 3;
+      for (let rr = br; rr < br + 3; rr++) {
+        for (let cc = bc; cc < bc + 3; cc++) {
+          if (rr === r && cc === c) continue;
+          if (board[rr][cc] === v) {
+            conflicts.add(r * SIZE + c);
+            conflicts.add(rr * SIZE + cc);
+          }
+        }
+      }
+    }
   }
-  updateCellHighlights(data.incorrect, inputs);
+
+  return Array.from(conflicts).map(idx => [Math.floor(idx / SIZE), idx % SIZE]);
+}
+
+async function checkBoardLive() {
+  // Perform client-side rule validation (rows, columns, 3x3 boxes).
+  const {board, inputs} = getBoardFromInputs();
+  const conflicts = findConflicts(board);
+  updateCellHighlights(conflicts, inputs);
 }
 
 async function checkSolution() {
@@ -247,7 +319,7 @@ async function checkSolution() {
     msg.innerText = data.error;
     return;
   }
-  updateCellHighlights(data.incorrect, inputs);
+  updateCellHighlights(data.incorrect, inputs, true);
   if (data.incorrect.length === 0) {
     stopTimer();
     msg.style.color = '#388e3c';
