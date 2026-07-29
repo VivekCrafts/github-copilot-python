@@ -3,6 +3,7 @@ const SIZE = 9;
 let puzzle = [];
 let timerInterval = null;
 let elapsedSeconds = 0;
+let scoreSaved = false;
 
 function formatTime(totalSeconds) {
   const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
@@ -85,7 +86,44 @@ async function newGame() {
   const data = await res.json();
   renderPuzzle(data.puzzle);
   document.getElementById('message').innerText = '';
+  scoreSaved = false;
   startTimer();
+}
+
+async function loadLeaderboard() {
+  const res = await fetch('/leaderboard');
+  const data = await res.json();
+  const list = document.getElementById('leaderboard-list');
+  list.innerHTML = '';
+  if (!data.scores.length) {
+    const item = document.createElement('li');
+    item.textContent = 'No scores yet.';
+    list.appendChild(item);
+    return;
+  }
+  data.scores.forEach((entry, index) => {
+    const item = document.createElement('li');
+    item.textContent = `${index + 1}. ${entry.name} — ${entry.time}s (${entry.difficulty})`;
+    list.appendChild(item);
+  });
+}
+
+async function saveScore() {
+  if (scoreSaved) {
+    return;
+  }
+  const name = document.getElementById('player-name').value.trim() || 'Anonymous';
+  const difficulty = document.getElementById('difficulty-select').value;
+  const res = await fetch('/score', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, time: elapsedSeconds, difficulty})
+  });
+  const data = await res.json();
+  if (data.status === 'ok') {
+    scoreSaved = true;
+    await loadLeaderboard();
+  }
 }
 
 async function checkSolution() {
@@ -125,6 +163,7 @@ async function checkSolution() {
     stopTimer();
     msg.style.color = '#388e3c';
     msg.innerText = `Congratulations! You solved it in ${formatTime(elapsedSeconds)}.`;
+    await saveScore();
   } else {
     msg.style.color = '#d32f2f';
     msg.innerText = 'Some cells are incorrect.';
@@ -135,6 +174,8 @@ async function checkSolution() {
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
+  document.getElementById('save-score').addEventListener('click', saveScore);
+  loadLeaderboard();
   // initialize
   newGame();
 });

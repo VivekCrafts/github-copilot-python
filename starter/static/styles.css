@@ -101,6 +101,36 @@ button:hover {
     color: #333;
 }
 
+.score-panel {
+    margin: 10px auto 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+}
+
+#player-name {
+    padding: 8px;
+    font-size: 16px;
+    border: 1px solid #bbb;
+    border-radius: 4px;
+}
+
+.leaderboard {
+    margin: 20px auto;
+    max-width: 320px;
+    text-align: left;
+}
+
+.leaderboard h2 {
+    margin-bottom: 8px;
+    font-size: 20px;
+}
+
+#leaderboard-list {
+    padding-left: 20px;
+}
+
 #message {
     margin-left: 20px;
     font-size: 16px;

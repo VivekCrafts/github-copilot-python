@@ -9,6 +9,9 @@ CURRENT = {
     'solution': None
 }
 
+# Simple in-memory leaderboard storage
+app.LEADERBOARD = []
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -34,6 +37,29 @@ def check_solution():
             if board[i][j] != solution[i][j]:
                 incorrect.append([i, j])
     return jsonify({'incorrect': incorrect})
+
+
+@app.route('/score', methods=['POST'])
+def submit_score():
+    data = request.json or {}
+    name = (data.get('name') or '').strip() or 'Anonymous'
+    time_taken = int(data.get('time', 0))
+    difficulty = (data.get('difficulty') or 'medium').lower()
+
+    entry = {
+        'name': name,
+        'time': time_taken,
+        'difficulty': difficulty,
+    }
+    app.LEADERBOARD.append(entry)
+    app.LEADERBOARD.sort(key=lambda item: (item['time'], item['name'].lower()))
+    return jsonify({'status': 'ok', 'scores': app.LEADERBOARD[:10]})
+
+
+@app.route('/leaderboard')
+def get_leaderboard():
+    return jsonify({'scores': app.LEADERBOARD[:10]})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
