@@ -55,9 +55,8 @@ function createBoardElement() {
       input.dataset.row = i;
       input.dataset.col = j;
 
-      // alternating 3x3 block class (A/B checkerboard: block-row % 2 === block-col % 2 -> A)
-      const blockClass = (Math.floor(i / 3) % 2) === (Math.floor(j / 3) % 2) ? 'block-a' : 'block-b';
-      input.className = `sudoku-cell ${blockClass}`;
+      const blockIndex = Math.floor(i / 3) * 3 + Math.floor(j / 3);
+      input.className = `sudoku-cell block-${blockIndex}`;
 
       input.addEventListener('input', (e) => {
         const val = e.target.value.replace(/[^1-9]/g, '');
@@ -334,6 +333,7 @@ async function checkSolution() {
 function applyDarkMode() {
   // Toggle the full-page theme class so the UI updates instantly.
   document.body.classList.toggle('dark', isDarkMode);
+  document.documentElement.style.colorScheme = isDarkMode ? 'dark' : 'light';
   const toggle = document.getElementById('dark-mode-toggle');
   if (toggle) {
     toggle.textContent = isDarkMode ? 'Light Mode' : 'Dark Mode';
@@ -348,10 +348,11 @@ function toggleDarkMode() {
 
 function loadDarkModePreference() {
   const storedValue = localStorage.getItem(DARK_MODE_STORAGE_KEY);
-  if (storedValue === 'true') {
-    isDarkMode = true;
+  if (storedValue === null) {
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    isDarkMode = prefersDark;
   } else {
-    isDarkMode = false;
+    isDarkMode = storedValue === 'true';
   }
   applyDarkMode();
 }
